@@ -53,3 +53,6 @@ if (require.main === module) {
 
 module.exports = app;
 module.exports.createApp = createApp;
+
+
+function testApp(options = {}) {}
