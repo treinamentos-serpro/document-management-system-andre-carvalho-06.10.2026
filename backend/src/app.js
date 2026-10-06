@@ -1,27 +1,49 @@
-// Seed do servidor backend do Document Management System.
-//
-// Este arquivo é apenas um ponto de partida mínimo. Ao longo do workshop você
-// vai usar o Agent Mode do GitHub Copilot para construir as camadas:
-//   - routes/       (definição das rotas)
-//   - controllers/  (entrada HTTP e validação)
-//   - services/     (regras de negócio)
-//   - repositories/ (persistência: arquivos locais + metadados em memória)
-//
-// Restrição do projeto: uploads são gravados no filesystem local da aplicação
-// usando multer com diskStorage. Não utilize provedores externos.
-
 const express = require('express');
+const path = require('node:path');
+const createDocumentRepository = require('./repositories/documentRepository');
+const createDocumentService = require('./services/documentService');
+const createDocumentRoutes = require('./routes/documentRoutes');
 
-const app = express();
+function createApp(options = {}) {
+  const storageDir = options.storageDir || process.env.STORAGE_DIR || path.resolve(__dirname, '../storage');
+  const configuredLimit = Number(options.maxFileSizeBytes || process.env.MAX_FILE_SIZE_BYTES);
+  const maxFileSizeBytes = Number.isInteger(configuredLimit) && configuredLimit > 0
+    ? configuredLimit
+    : 10 * 1024 * 1024;
+  const documentRepository = createDocumentRepository({ storageDir });
+  const documentService = createDocumentService({ documentRepository });
+  const app = express();
+
+  app.use(express.json());
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok' });
+  });
+  app.use(createDocumentRoutes({ documentService, storageDir, maxFileSizeBytes }));
+
+  app.use((error, req, res, next) => {
+    if (res.headersSent) {
+      return next(error);
+    }
+
+    const isMulterError = error.name === 'MulterError';
+    const status = error.code === 'LIMIT_FILE_SIZE'
+      ? 413
+      : (error.status || (isMulterError ? 400 : 500));
+    const code = error.code === 'LIMIT_FILE_SIZE'
+      ? 'FILE_TOO_LARGE'
+      : (isMulterError ? 'INVALID_UPLOAD' : 'INTERNAL_SERVER_ERROR');
+    const message = status === 413
+      ? 'O arquivo excede o tamanho máximo permitido.'
+      : (status < 500 ? error.message : 'Ocorreu um erro interno.');
+
+    res.status(status).json({ error: { code, message } });
+  });
+
+  return app;
+}
+
+const app = createApp();
 const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-
-// Endpoint de verificação de saúde. As demais rotas (/upload, /documents,
-// /documents/:id/download) serão implementadas durante o Passo 2.
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
 
 if (require.main === module) {
   app.listen(PORT, () => {
@@ -30,3 +52,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+module.exports.createApp = createApp;
