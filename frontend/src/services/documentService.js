@@ -45,3 +45,13 @@ export async function downloadDocument(userId, document) {
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(fileUrl), 1000);
 }
+
+async function testApp(endpoint, userId, options = {}) {
+  try {
+    const response = await request(endpoint, userId, options);
+    return await response.json();
+  } catch (error) {
+    console.error('Test app request failed:', error);
+    throw error;
+  }
+}

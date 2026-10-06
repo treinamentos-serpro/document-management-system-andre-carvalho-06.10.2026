@@ -1,76 +1,28 @@
 # Instruções do projeto - Document Management System (DMS)
 
-Estas instruções são aplicadas automaticamente pelo GitHub Copilot em todas as
-interações neste repositório. Use-as como contexto de engenharia para gerar
-código consistente com a arquitetura e as convenções do projeto.
+## Contexto e documentação
 
-## Visão geral
+- O contrato funcional e as decisões arquiteturais estão em [docs/specs/dms-spec.md](../docs/specs/dms-spec.md). Consulte-o antes de alterar endpoints, armazenamento ou comportamento de erro; mantenha estas instruções como guia operacional, sem duplicar a especificação.
+- Backend: Node.js + Express, JavaScript CommonJS. Frontend: React + Vite, JavaScript ESM. Não introduza TypeScript nesta fase.
+- Não há scripts na raiz; instale dependências e execute comandos no diretório do pacote correspondente.
 
-Sistema web para gestão de documentos com:
+## Arquitetura e limites
 
-- Upload de documentos
-- Listagem de documentos
-- Download de documentos
-- Gestão simples por usuário
+- Backend em `backend/src`: `routes -> controllers -> services -> repositories`. Rotas configuram HTTP e Multer; controllers traduzem HTTP; services contêm regras de negócio; repositories encapsulam metadados e filesystem.
+- Frontend em `frontend/src`: organize por `pages/`, `components/` e `services/`; mantenha chamadas `fetch` à API nos services e reutilize componentes existentes.
+- O frontend chama `/api`; o proxy do Vite em `frontend/vite.config.js` remove esse prefixo antes de encaminhar para o backend na porta `3000`. As rotas Express não incluem `/api`.
 
-## Stack
+## Restrições e cuidados
 
-- Backend: Node.js + Express (CommonJS)
-- Frontend: React + Vite (ESM)
-- Testes backend: runner nativo do Node (`node:test`)
-- Sem TypeScript nesta fase (JavaScript puro)
+- Uploads usam Multer `diskStorage` e ficam no filesystem local, por padrão em `backend/storage`; não use armazenamento externo. Gere nomes internos seguros, sem usar o nome original como caminho.
+- Metadados ficam em memória: reiniciar o processo os perde, mesmo que os arquivos permaneçam no disco.
+- `X-User-Id` é apenas um identificador fornecido pelo cliente, não autenticação. Não descreva nem trate o isolamento atual como proteção de identidade para exposição pública.
+- Preserve os contratos de erro: documento alheio/inexistente ou arquivo ausente pode resultar em `404`; não converta falhas operacionais de filesystem, como permissão negada, em `404`.
+- Configurações operacionais usam variáveis de ambiente (`PORT`, `STORAGE_DIR`, `MAX_FILE_SIZE_BYTES`); o limite padrão é 10 MiB.
 
-## Princípios obrigatórios
+## Convenções e validação
 
-- SOLID, DRY, KISS, YAGNI
-- 12-Factor App (configuração via variáveis de ambiente)
-- Código legível tem prioridade sobre código complexo
-- Sem overengineering e sem abstrações desnecessárias
-
-## Arquitetura do backend (Clean Architecture simples)
-
-Separe responsabilidades em quatro camadas dentro de `backend/src`:
-
-- `routes/`: definem os endpoints e delegam para os controllers
-- `controllers/`: tratam entrada/saída HTTP e validação básica
-- `services/`: concentram as regras de negócio
-- `repositories/`: cuidam da persistência
-
-Fluxo de dependência: `routes -> controllers -> services -> repositories`.
-Camadas internas não conhecem camadas externas.
-
-## Endpoints previstos
-
-- `POST /upload` - envia um documento
-- `GET /documents` - lista os documentos
-- `GET /documents/:id/download` - baixa um documento
-
-## Armazenamento (restrição importante)
-
-- Os arquivos enviados são gravados no filesystem local da aplicação, na pasta
-  `backend/storage`, utilizando `multer` com `diskStorage`.
-- Os metadados dos documentos (id, nome original, tamanho, data, dono) ficam em
-  memória nesta fase inicial.
-- Não utilize provedores de armazenamento externos ou serviços de upload de
-  terceiros. O armazenamento é estritamente local à aplicação.
-
-## Convenções do frontend
-
-- Componentes funcionais com React Hooks
-- Organização baseada em componentes: `components/`, `pages/`, `services/`
-- A comunicação com o backend é feita via `fetch`, através do prefixo `/api`
-  (proxy configurado no Vite)
-- Reutilize componentes e evite duplicação
-
-## Estilo de código
-
-- Nomes descritivos em inglês para símbolos de código
-- Mensagens ao usuário e comentários em português
-- Funções pequenas e com responsabilidade única
-- Trate erros nos limites do sistema (entrada HTTP, leitura/escrita de arquivos)
-
-## Restrições gerais
-
-- Não quebrar funcionalidades existentes
-- Manter o seed simples e evolutivo
-- Preferir dependências já presentes no `package.json`
+- Use nomes descritivos em inglês para símbolos; mensagens ao usuário e comentários em português. Prefira funções pequenas, dependências já instaladas e abstrações mínimas.
+- Backend: `cd backend && npm ci && npm test`; execute com `npm run dev` ou `npm start`.
+- Frontend (Node.js >= 24): `cd frontend && npm ci && npm run build`; execute com `npm run dev` e, para conferir a build, `npm run preview`.
+- Testes backend usam `node:test`; adicione ou ajuste testes para mudanças de contrato e isole arquivos de teste em diretório temporário, sem gravar dados de teste em `backend/storage`.
