@@ -1,3 +1,5 @@
+import DownloadButton from './DownloadButton.jsx';
+
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -51,16 +53,11 @@ export default function DocumentList({ documents, loading, onDownload, downloadi
               <td className="muted-cell">{formatSize(document.size)}</td>
               <td className="muted-cell">{formatDate(document.uploadedAt)}</td>
               <td className="action-cell">
-                <button
-                  className="download-button"
-                  type="button"
-                  onClick={() => onDownload(document)}
-                  disabled={downloadingId === document.id}
-                  aria-label={`Baixar ${document.originalName}`}
-                  title="Baixar documento"
-                >
-                  {downloadingId === document.id ? '...' : '↓'}
-                </button>
+                <DownloadButton
+                  document={document}
+                  onDownload={onDownload}
+                  downloading={downloadingId === document.id}
+                />
               </td>
             </tr>
           ))}

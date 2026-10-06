@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import DocumentList from '../components/DocumentList.jsx';
-import UploadForm from '../components/UploadForm.jsx';
 import {
   downloadDocument,
   listDocuments,
@@ -15,7 +13,7 @@ function getSavedUserId() {
   }
 }
 
-export default function DocumentsPage() {
+export default function DocumentsPage({ children }) {
   const [userId, setUserId] = useState(getSavedUserId);
   const [userIdDraft, setUserIdDraft] = useState(userId);
   const [documents, setDocuments] = useState([]);
@@ -138,38 +136,21 @@ export default function DocumentsPage() {
           </div>
         )}
 
-        <section className="upload-section" aria-labelledby="upload-title">
-          <div className="section-title-row">
-            <div>
-              <p className="eyebrow">ADICIONAR AO ARQUIVO</p>
-              <h2 id="upload-title">Novo documento</h2>
-            </div>
-            <span className="section-index">01 / ENVIO</span>
-          </div>
-          <UploadForm
-            file={file}
-            onFileSelected={setFile}
-            onSubmit={handleUpload}
-            uploading={uploading}
-            key={inputKey}
-          />
-        </section>
-
-        <section className="documents-section" aria-labelledby="documents-title">
-          <div className="section-title-row documents-heading">
-            <div>
-              <p className="eyebrow">BIBLIOTECA PESSOAL</p>
-              <h2 id="documents-title">Documentos <span className="count-badge">{documents.length}</span></h2>
-            </div>
-            <span className="section-index">02 / ARQUIVO</span>
-          </div>
-          <DocumentList
-            documents={documents}
-            loading={loading}
-            onDownload={handleDownload}
-            downloadingId={downloadingId}
-          />
-        </section>
+        {children({
+          uploadProps: {
+            file,
+            onFileSelected: setFile,
+            onSubmit: handleUpload,
+            uploading,
+            inputKey,
+          },
+          listProps: {
+            documents,
+            loading,
+            onDownload: handleDownload,
+            downloadingId,
+          },
+        })}
       </main>
 
       <footer className="page-footer">
